@@ -1,0 +1,35 @@
+import html,json,os,shutil
+from pathlib import Path
+from content import SITE
+E=html.escape
+BASE=SITE['url'].rstrip('/')
+OUT=Path('dist');shutil.rmtree(OUT,ignore_errors=True);OUT.mkdir()
+shutil.copytree('assets',OUT/'assets')
+NAME=SITE['name'];COUNTER=SITE['counter'];PAGES=SITE['pages'];HOME=SITE['home']
+REF='https://aeza.ru/?ref=467715'
+def url(path=''):return BASE+'/'+path.lstrip('/')
+def affiliate(text='Сравнить тарифы Aeza',placement='content'):
+ return f'<a class="button" href="{REF}" target="_blank" rel="sponsored nofollow noopener" data-placement="{placement}">{E(text)} <span aria-hidden="true">↗</span></a>'
+def layout(title,desc,body,path='',article=False):
+ canonical=url(path);ld={'@context':'https://schema.org','@type':'Article' if article else 'WebPage','name':title,'description':desc,'inLanguage':'ru','url':canonical}
+ if article:ld.update(headline=title,datePublished='2026-11-09',dateModified='2026-11-09',author={'@type':'Organization','name':NAME,'url':url()})
+ links=''.join(f'<a {"aria-current=page" if path==slug+"/" else ""} href="{url(slug+"/")}">{E(p["nav"])}</a>' for slug,p in PAGES.items() if p.get('nav'))
+ analytics=f'''<script>window.SITE_COUNTER={COUNTER};(function(m,e,t,r,i,k,a){{m[i]=m[i]||function(){{(m[i].a=m[i].a||[]).push(arguments)}};m[i].l=1*new Date();k=e.createElement(t);a=e.getElementsByTagName(t)[0];k.async=1;k.src=r;a.parentNode.insertBefore(k,a)}})(window,document,"script","https://mc.yandex.ru/metrika/tag.js","ym");ym({COUNTER},"init",{{clickmap:true,trackLinks:true,accurateTrackBounce:true,webvisor:false}});</script>''' if COUNTER else ''
+ return f'''<!doctype html><html lang="ru" data-theme="{SITE['theme']}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{E(title)} — {E(NAME)}</title><meta name="description" content="{E(desc)}"><meta name="robots" content="index,follow,max-image-preview:large"><link rel="canonical" href="{canonical}"><meta name="google-site-verification" content="Yp9jwHr4COqJ1m2GRLwet1UMlz9AoIvd9c-SAXJsfBM"><meta name="theme-color" content="{SITE['color']}"><meta property="og:type" content="{'article' if article else 'website'}"><meta property="og:title" content="{E(title)}"><meta property="og:description" content="{E(desc)}"><meta property="og:url" content="{canonical}"><meta property="og:locale" content="ru_RU"><link rel="icon" href="{url('assets/icon.svg')}" type="image/svg+xml"><link rel="stylesheet" href="{url('assets/site.css')}"><script type="application/ld+json">{json.dumps(ld,ensure_ascii=False)}</script>{analytics}</head><body><a class="skip" href="#main">К содержанию</a><header><div class="wrap top"><a class="brand" href="{url()}"><span class="brand-icon" aria-hidden="true">{SITE['mark']}</span>{E(NAME)}</a><nav aria-label="Главная навигация">{links}</nav></div></header><main id="main">{body}</main><footer><div class="wrap"><div class="footer-grid"><div><a class="brand" href="{url()}">{E(NAME)}</a><p>{E(SITE['tag'])}</p></div><div><b>Мастерские</b><a href="https://vps.lainos.online/">VPS на практике</a><a href="https://dolepp.github.io/">Все мастерские Lainos</a></div><div><b>О проекте</b><a href="{url('about/')}">Как готовим материалы</a><a href="{url('privacy/')}">Конфиденциальность</a><a href="{url('sitemap.xml')}">Карта сайта</a></div></div><p class="fine">© 2026 · Независимый проект. На сайте есть реклама Aeza: партнёрские ссылки содержат ref=467715. Автор может получить вознаграждение. Считаем переходы, а не подтверждённые покупки.</p></div></footer><script src="{url('assets/site.js')}" defer></script></body></html>'''
+def write(path,body):
+ p=OUT/path;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(body)
+def transform(s):return s.replace('{BASE}',BASE).replace('{REF}',REF).replace('{AFFILIATE}',affiliate()).replace('{SITE_NAME}',NAME)
+write('index.html',layout(HOME['title'],HOME['desc'],transform(HOME['body'])))
+for slug,p in PAGES.items():
+ body=f'<div class="wrap reading"><div class="crumb"><a href="{url()}">Главная</a> / {E(p["nav"])}</div><p class="eyebrow">{E(p.get("label","Практическая инструкция"))}</p><h1>{E(p["title"])}</h1><p class="lead">{E(p["desc"])}</p><p class="fine">Редакция от 9 ноября 2026 · Оценки ресурсов — ориентиры, а не гарантии производительности.</p><article>{transform(p["body"])}</article></div>'
+ write(slug+'/index.html',layout(p['title'],p['desc'],body,slug+'/',True))
+privacy='<div class="wrap reading"><h1>Конфиденциальность</h1><p>На сайте используется Яндекс Метрика: просмотры, использование инструментов, скачивания примеров и переходы в Aeza. Вебвизор отключён. Сервис аналитики может использовать cookie и технические сведения о браузере и посещении. Не вводите токены и пароли в инструменты сайта.</p><p>Генераторы работают в браузере. Они не подключаются к вашему облаку или игровому серверу и не отправляют содержимое конфигурации на наш сервер. В аналитику передаются название события и раздел страницы, без полей конфигурации.</p><p>Автор не видит данные вашей учётной записи Aeza и платежей. Регистрации и оплаты доступны только в статистике партнёрской программы. <a href="https://yandex.ru/legal/confidential/">Политика Яндекса</a> · <a href="https://aeza.ru/privacy">Политика Aeza</a>.</p></div>'
+write('privacy/index.html',layout('Конфиденциальность','Как работают аналитика, инструменты и партнёрские ссылки.',privacy,'privacy/'))
+about='<div class="wrap reading"><h1>Как готовим материалы</h1><p>'+E(NAME)+' — независимая практическая мастерская. Наша задача — помочь оценить ресурсы, собрать конфигурацию и понять ограничения самостоятельного размещения.</p><h2>Метод</h2><p>Примеры подготовлены по официальной документации, ссылки на неё находятся в инструкциях. Подбор ресурсов основан на описании задачи; это не результат нагрузочного теста. Мы не публикуем выдуманные отзывы, рейтинги провайдеров и замеры доступности.</p><p>Сгенерированные файлы нужно проверить и адаптировать перед запуском. Доступность внешних API зависит от провайдера, локации и правил самого API.</p><h2>Партнёрство</h2><p>На сайте есть рекламные ссылки на Aeza. Автор может получить вознаграждение. Упоминание провайдера не означает гарантии цены, доступности или соответствия каждой задаче. Можно выбрать другой VPS с подходящей ОС и ресурсами.</p></div>'
+write('about/index.html',layout('О проекте и методике','Источники, ограничения оценок и раскрытие партнёрства.',about,'about/'))
+urls=['']+[slug+'/' for slug in PAGES]+['about/','privacy/']
+write('sitemap.xml','<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'+''.join(f'<url><loc>{url(p)}</loc><lastmod>2026-11-09</lastmod></url>' for p in urls)+'</urlset>')
+write('robots.txt','User-agent: *\nAllow: /\nSitemap: '+url('sitemap.xml')+'\n')
+write('404.html',layout('Страница не найдена','Вернитесь к инструментам и инструкциям.',f'<div class="wrap reading"><h1>Страница не найдена</h1><a class="button" href="{url()}">К инструментам →</a></div>','404.html').replace('index,follow,max-image-preview:large','noindex'))
+write('.nojekyll','')
+print(f'Built {NAME}: {len(urls)} pages')
